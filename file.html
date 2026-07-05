@@ -1,0 +1,1085 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>PawPals – Local Doggy Playdates</title>
+
+<!-- Leaflet CSS -->
+<link rel="stylesheet" href="[unpkg.com](https://unpkg.com/leaflet@1.9.4/dist/leaflet.css)"/>
+<!-- Leaflet MarkerCluster -->
+<link rel="stylesheet" href="[unpkg.com](https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css)"/>
+<link rel="stylesheet" href="[unpkg.com](https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css)"/>
+
+<style>
+  /* ─── RESET & BASE ─────────────────────────────── */
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --brand:    #F4845F;
+    --brand2:   #F9C784;
+    --dark:     #1E1E2E;
+    --mid:      #2D2D3F;
+    --light:    #F5F5F5;
+    --muted:    #888;
+    --green:    #4CAF8C;
+    --red:      #E05C5C;
+    --radius:   14px;
+    --shadow:   0 4px 24px rgba(0,0,0,.15);
+    --font:     'Segoe UI', system-ui, sans-serif;
+  }
+  body {
+    font-family: var(--font);
+    background: var(--light);
+    color: var(--dark);
+    min-height: 100vh;
+  }
+
+  /* ─── NAV ─────────────────────────────────────── */
+  nav {
+    background: var(--dark);
+    padding: 0 24px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 62px;
+    position: sticky;
+    top: 0;
+    z-index: 1000;
+    box-shadow: var(--shadow);
+  }
+  .nav-logo {
+    font-size: 1.5rem;
+    font-weight: 800;
+    color: var(--brand);
+    letter-spacing: -0.5px;
+  }
+  .nav-logo span { color: var(--brand2); }
+  .nav-links { display: flex; gap: 6px; }
+  .nav-btn {
+    background: none;
+    border: none;
+    color: #ccc;
+    font-size: .9rem;
+    padding: 8px 14px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all .2s;
+    font-family: var(--font);
+  }
+  .nav-btn:hover, .nav-btn.active {
+    background: var(--brand);
+    color: #fff;
+  }
+  .nav-avatar {
+    width: 36px; height: 36px;
+    border-radius: 50%;
+    background: var(--brand);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.2rem;
+    cursor: pointer;
+    border: 2px solid var(--brand2);
+  }
+
+  /* ─── PAGES ───────────────────────────────────── */
+  .page { display: none; padding: 28px 24px; max-width: 1100px; margin: 0 auto; }
+  .page.active { display: block; }
+
+  /* ─── HERO ────────────────────────────────────── */
+  .hero {
+    background: linear-gradient(135deg, var(--dark) 0%, #3a2a4a 100%);
+    border-radius: var(--radius);
+    padding: 64px 40px;
+    text-align: center;
+    color: #fff;
+    margin-bottom: 32px;
+    position: relative;
+    overflow: hidden;
+  }
+  .hero::before {
+    content: '🐾';
+    font-size: 12rem;
+    position: absolute;
+    right: -20px; top: -20px;
+    opacity: .07;
+  }
+  .hero h1 { font-size: 2.8rem; font-weight: 900; margin-bottom: 12px; }
+  .hero h1 span { color: var(--brand); }
+  .hero p { font-size: 1.15rem; color: #bbb; margin-bottom: 28px; }
+  .btn {
+    display: inline-block;
+    padding: 13px 28px;
+    border-radius: 10px;
+    font-weight: 700;
+    font-size: 1rem;
+    cursor: pointer;
+    border: none;
+    transition: all .2s;
+    font-family: var(--font);
+    text-decoration: none;
+  }
+  .btn-primary { background: var(--brand); color: #fff; }
+  .btn-primary:hover { background: #e06b45; transform: translateY(-1px); }
+  .btn-secondary { background: var(--mid); color: #fff; }
+  .btn-secondary:hover { background: #3f3f58; }
+  .btn-green { background: var(--green); color: #fff; }
+  .btn-green:hover { background: #3a9e78; }
+  .btn-sm { padding: 7px 14px; font-size: .85rem; border-radius: 8px; }
+
+  /* ─── CARDS ───────────────────────────────────── */
+  .card {
+    background: #fff;
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    padding: 24px;
+    margin-bottom: 20px;
+  }
+  .card-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 20px;
+  }
+  .dog-card {
+    background: #fff;
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    padding: 22px;
+    transition: transform .2s;
+    cursor: pointer;
+    border: 2px solid transparent;
+  }
+  .dog-card:hover { transform: translateY(-3px); border-color: var(--brand); }
+  .dog-card-avatar {
+    width: 64px; height: 64px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--brand), var(--brand2));
+    display: flex; align-items: center; justify-content: center;
+    font-size: 2rem;
+    margin-bottom: 14px;
+  }
+  .dog-card h3 { font-size: 1.1rem; margin-bottom: 4px; }
+  .dog-card .breed { color: var(--muted); font-size: .88rem; margin-bottom: 10px; }
+  .tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+  .tag {
+    background: #f0f0f5;
+    border-radius: 20px;
+    padding: 3px 10px;
+    font-size: .78rem;
+    color: var(--muted);
+    font-weight: 600;
+  }
+  .tag.brand { background: #fff0eb; color: var(--brand); }
+  .tag.green { background: #e8f7f2; color: var(--green); }
+
+  /* ─── MEETUP CARD ─────────────────────────────── */
+  .meetup-card {
+    background: #fff;
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    padding: 20px;
+    border-left: 4px solid var(--brand);
+    transition: transform .2s;
+  }
+  .meetup-card:hover { transform: translateY(-2px); }
+  .meetup-card.recurring { border-left-color: var(--green); }
+  .meetup-meta { display: flex; gap: 16px; margin: 8px 0; flex-wrap: wrap; }
+  .meetup-meta span { font-size: .85rem; color: var(--muted); display: flex; align-items: center; gap: 4px; }
+  .attendees { display: flex; align-items: center; gap: 6px; margin-top: 10px; }
+  .attendee-avatar {
+    width: 28px; height: 28px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--brand), var(--brand2));
+    display: flex; align-items: center; justify-content: center;
+    font-size: .9rem;
+    border: 2px solid #fff;
+    margin-left: -6px;
+  }
+  .attendee-avatar:first-child { margin-left: 0; }
+
+  /* ─── FORMS ───────────────────────────────────── */
+  .form-group { margin-bottom: 18px; }
+  label { display: block; font-weight: 600; font-size: .9rem; margin-bottom: 6px; color: var(--dark); }
+  input, select, textarea {
+    width: 100%;
+    padding: 11px 14px;
+    border: 2px solid #e0e0e0;
+    border-radius: 10px;
+    font-size: .95rem;
+    font-family: var(--font);
+    color: var(--dark);
+    background: #fafafa;
+    transition: border-color .2s;
+  }
+  input:focus, select:focus, textarea:focus {
+    outline: none;
+    border-color: var(--brand);
+    background: #fff;
+  }
+  textarea { resize: vertical; min-height: 80px; }
+  .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .form-row-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; }
+  .checkbox-group { display: flex; flex-wrap: wrap; gap: 10px; }
+  .checkbox-pill input { display: none; }
+  .checkbox-pill label {
+    background: #f0f0f5;
+    border-radius: 20px;
+    padding: 6px 14px;
+    cursor: pointer;
+    font-size: .85rem;
+    font-weight: 600;
+    color: var(--muted);
+    transition: all .2s;
+    border: 2px solid transparent;
+    margin: 0;
+  }
+  .checkbox-pill input:checked + label {
+    background: #fff0eb;
+    color: var(--brand);
+    border-color: var(--brand);
+  }
+  .section-title {
+    font-size: 1.4rem;
+    font-weight: 800;
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  /* ─── MAP ─────────────────────────────────────── */
+  #map {
+    height: 520px;
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    z-index: 1;
+  }
+  .map-controls {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 14px;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+  .map-legend {
+    display: flex;
+    gap: 16px;
+    margin-top: 12px;
+    font-size: .85rem;
+    flex-wrap: wrap;
+  }
+  .legend-item { display: flex; align-items: center; gap: 6px; }
+  .legend-dot {
+    width: 12px; height: 12px;
+    border-radius: 50%;
+  }
+
+  /* ─── PROFILE PAGE ────────────────────────────── */
+  .profile-header {
+    background: linear-gradient(135deg, var(--dark), #2d2040);
+    border-radius: var(--radius);
+    padding: 32px;
+    color: #fff;
+    display: flex;
+    align-items: center;
+    gap: 24px;
+    margin-bottom: 24px;
+  }
+  .profile-avatar {
+    width: 90px; height: 90px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--brand), var(--brand2));
+    display: flex; align-items: center; justify-content: center;
+    font-size: 3rem;
+    flex-shrink: 0;
+    border: 3px solid var(--brand2);
+  }
+  .profile-info h2 { font-size: 1.6rem; }
+  .profile-info p { color: #aaa; margin-top: 4px; }
+
+  /* ─── MODAL ───────────────────────────────────── */
+  .modal-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,.55);
+    z-index: 2000;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+  }
+  .modal-overlay.open { display: flex; }
+  .modal {
+    background: #fff;
+    border-radius: var(--radius);
+    padding: 32px;
+    width: 100%;
+    max-width: 560px;
+    max-height: 90vh;
+    overflow-y: auto;
+    box-shadow: 0 20px 60px rgba(0,0,0,.3);
+    animation: slideUp .25s ease;
+  }
+  @keyframes slideUp {
+    from { transform: translateY(30px); opacity: 0; }
+    to   { transform: translateY(0);    opacity: 1; }
+  }
+  .modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 24px;
+  }
+  .modal-header h2 { font-size: 1.3rem; }
+  .modal-close {
+    background: none; border: none;
+    font-size: 1.5rem; cursor: pointer;
+    color: var(--muted); line-height: 1;
+  }
+  #modal-map {
+    height: 220px;
+    border-radius: 10px;
+    margin-bottom: 8px;
+  }
+  .pick-location-hint {
+    font-size: .8rem;
+    color: var(--muted);
+    margin-bottom: 14px;
+  }
+
+  /* ─── TOAST ───────────────────────────────────── */
+  #toast {
+    position: fixed;
+    bottom: 28px; right: 28px;
+    background: var(--dark);
+    color: #fff;
+    padding: 13px 22px;
+    border-radius: 10px;
+    font-size: .92rem;
+    font-weight: 600;
+    box-shadow: var(--shadow);
+    transform: translateY(80px);
+    opacity: 0;
+    transition: all .3s;
+    z-index: 3000;
+  }
+  #toast.show { transform: translateY(0); opacity: 1; }
+
+  /* ─── TABS ────────────────────────────────────── */
+  .tabs { display: flex; gap: 6px; margin-bottom: 22px; }
+  .tab {
+    padding: 9px 18px;
+    border-radius: 8px;
+    border: none;
+    font-family: var(--font);
+    font-size: .9rem;
+    font-weight: 600;
+    cursor: pointer;
+    background: #e8e8f0;
+    color: var(--muted);
+    transition: all .2s;
+  }
+  .tab.active { background: var(--brand); color: #fff; }
+
+  /* ─── RESPONSIVE ──────────────────────────────── */
+  @media (max-width: 600px) {
+    .form-row, .form-row-3 { grid-template-columns: 1fr; }
+    .hero h1 { font-size: 1.9rem; }
+    .hero { padding: 40px 20px; }
+    .profile-header { flex-direction: column; text-align: center; }
+    nav { padding: 0 12px; }
+    .nav-btn { padding: 7px 10px; font-size: .82rem; }
+  }
+  .empty-state {
+    text-align: center;
+    padding: 48px 20px;
+    color: var(--muted);
+  }
+  .empty-state .emoji { font-size: 3.5rem; display: block; margin-bottom: 14px; }
+  .stat-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px,1fr));
+    gap: 16px;
+    margin-bottom: 28px;
+  }
+  .stat-card {
+    background: #fff;
+    border-radius: var(--radius);
+    padding: 20px;
+    text-align: center;
+    box-shadow: var(--shadow);
+  }
+  .stat-card .stat-val { font-size: 2rem; font-weight: 900; color: var(--brand); }
+  .stat-card .stat-lbl { font-size: .82rem; color: var(--muted); margin-top: 4px; }
+</style>
+</head>
+<body>
+
+<!-- ═══ NAV ═══════════════════════════════════════════ -->
+<nav>
+  <div class="nav-logo">Paw<span>Pals</span> 🐾</div>
+  <div class="nav-links">
+    <button class="nav-btn active" onclick="showPage('home')">Home</button>
+    <button class="nav-btn" onclick="showPage('map-page')">Map</button>
+    <button class="nav-btn" onclick="showPage('meetups')">Meetups</button>
+    <button class="nav-btn" onclick="showPage('dogs')">Dogs</button>
+    <button class="nav-btn" onclick="showPage('profile')">Profile</button>
+  </div>
+  <div class="nav-avatar" onclick="showPage('profile')">🐶</div>
+</nav>
+
+<!-- ═══ TOAST ══════════════════════════════════════════ -->
+<div id="toast"></div>
+
+<!-- ═══ PAGE: HOME ════════════════════════════════════ -->
+<div class="page active" id="home">
+  <div class="hero">
+    <h1>Find Your Dog's<br/><span>Perfect Playdate</span> 🐾</h1>
+    <p>Connect with local pet owners, discover nearby dog parks,<br/>and schedule meetups right on the map.</p>
+    <button class="btn btn-primary" onclick="openDogModal()">➕ Add Your Dog</button>
+    &nbsp;
+    <button class="btn btn-secondary" onclick="openMeetupModal()">📅 Create Meetup</button>
+  </div>
+
+  <div class="stat-row" id="stats-row"></div>
+
+  <div style="display:grid; grid-template-columns:1fr 1fr; gap:20px; margin-bottom:28px;">
+    <div class="card">
+      <div class="section-title">📅 Upcoming Meetups</div>
+      <div id="home-meetups"></div>
+    </div>
+    <div class="card">
+      <div class="section-title">🐶 Recent Dogs</div>
+      <div id="home-dogs"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ PAGE: MAP ══════════════════════════════════════ -->
+<div class="page" id="map-page">
+  <div class="section-title">🗺️ Meetups Near You</div>
+  <div class="map-controls">
+    <button class="btn btn-primary btn-sm" onclick="openMeetupModal()">➕ Create Meetup</button>
+    <button class="tab active" id="filter-all" onclick="filterMap('all')">All</button>
+    <button class="tab" id="filter-oneoff" onclick="filterMap('oneoff')">One-Off</button>
+    <button class="tab" id="filter-recurring" onclick="filterMap('recurring')">Recurring</button>
+    <button class="btn btn-secondary btn-sm" onclick="locateUser()">📍 My Location</button>
+  </div>
+  <div id="map"></div>
+  <div class="map-legend">
+    <div class="legend-item"><div class="legend-dot" style="background:#F4845F"></div>One-Off Meetup</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#4CAF8C"></div>Recurring Meetup</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#5B8DEF"></div>Dog Park</div>
+  </div>
+</div>
+
+<!-- ═══ PAGE: MEETUPS ════════════════════════════════ -->
+<div class="page" id="meetups">
+  <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; flex-wrap:wrap; gap:12px;">
+    <div class="section-title" style="margin:0">📅 All Meetups</div>
+    <button class="btn btn-primary btn-sm" onclick="openMeetupModal()">➕ Create Meetup</button>
+  </div>
+  <div class="tabs">
+    <button class="tab active" onclick="filterMeetupList('all',this)">All</button>
+    <button class="tab" onclick="filterMeetupList('oneoff',this)">One-Off</button>
+    <button class="tab" onclick="filterMeetupList('recurring',this)">Recurring</button>
+  </div>
+  <div class="card-grid" id="meetup-list"></div>
+</div>
+
+<!-- ═══ PAGE: DOGS ════════════════════════════════════ -->
+<div class="page" id="dogs">
+  <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; flex-wrap:wrap; gap:12px;">
+    <div class="section-title" style="margin:0">🐶 Registered Dogs</div>
+    <button class="btn btn-primary btn-sm" onclick="openDogModal()">➕ Add Dog</button>
+  </div>
+  <div class="card-grid" id="dog-list"></div>
+</div>
+
+<!-- ═══ PAGE: PROFILE ════════════════════════════════ -->
+<div class="page" id="profile">
+  <div class="profile-header" id="profile-header">
+    <div class="profile-avatar">🐾</div>
+    <div class="profile-info">
+      <h2 id="profile-name">Your Profile</h2>
+      <p id="profile-location">📍 Location not set</p>
+      <p id="profile-park" style="margin-top:4px;font-size:.9rem;color:#aaa;"></p>
+    </div>
+    <button class="btn btn-secondary btn-sm" style="margin-left:auto" onclick="openProfileModal()">✏️ Edit Profile</button>
+  </div>
+
+  <div class="card">
+    <div class="section-title">🐶 My Dogs</div>
+    <div class="card-grid" id="my-dogs"></div>
+    <div style="margin-top:14px">
+      <button class="btn btn-primary btn-sm" onclick="openDogModal()">➕ Add Dog</button>
+    </div>
+  </div>
+
+  <div class="card" style="margin-top:20px">
+    <div class="section-title">📅 My Meetups</div>
+    <div class="card-grid" id="my-meetups"></div>
+    <div style="margin-top:14px">
+      <button class="btn btn-primary btn-sm" onclick="openMeetupModal()">➕ Create Meetup</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ MODAL: DOG ════════════════════════════════════ -->
+<div class="modal-overlay" id="dog-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <h2>🐶 Add Your Dog</h2>
+      <button class="modal-close" onclick="closeModal('dog-modal')">×</button>
+    </div>
+    <form id="dog-form" onsubmit="saveDog(event)">
+      <div class="form-group">
+        <label>Dog's Name *</label>
+        <input type="text" id="dog-name" placeholder="e.g. Biscuit" required/>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Breed *</label>
+          <input type="text" id="dog-breed" placeholder="e.g. Golden Retriever" required/>
+        </div>
+        <div class="form-group">
+          <label>Age</label>
+          <input type="text" id="dog-age" placeholder="e.g. 2 years"/>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Sex</label>
+          <select id="dog-sex">
+            <option value="">Select…</option>
+            <option>Male (intact)</option>
+            <option>Male (neutered)</option>
+            <option>Female (intact)</option>
+            <option>Female (spayed)</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Size</label>
+          <select id="dog-size">
+            <option value="">Select…</option>
+            <option>Tiny (&lt;10 lbs)</option>
+            <option>Small (10–25 lbs)</option>
+            <option>Medium (25–60 lbs)</option>
+            <option>Large (60–100 lbs)</option>
+            <option>XLarge (100+ lbs)</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Personality Traits</label>
+        <div class="checkbox-group" id="personality-checks">
+          <div class="checkbox-pill"><input type="checkbox" id="p1" value="Playful"/><label for="p1">🎾 Playful</label></div>
+          <div class="checkbox-pill"><input type="checkbox" id="p2" value="Calm"/><label for="p2">😌 Calm</label></div>
+          <div class="checkbox-pill"><input type="checkbox" id="p3" value="Energetic"/><label for="p3">⚡ Energetic</label></div>
+          <div class="checkbox-pill"><input type="checkbox" id="p4" value="Shy"/><label for="p4">🙈 Shy</label></div>
+          <div class="checkbox-pill"><input type="checkbox" id="p5" value="Friendly"/><label for="p5">🤝 Friendly</label></div>
+          <div class="checkbox-pill"><input type="checkbox" id="p6" value="Gentle"/><label for="p6">🌸 Gentle</label></div>
+          <div class="checkbox-pill"><input type="checkbox" id="p7" value="Protective"/><label for="p7">🛡️ Protective</label></div>
+          <div class="checkbox-pill"><input type="checkbox" id="p8" value="Cuddly"/><label for="p8">🤗 Cuddly</label></div>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>About Your Dog</label>
+        <textarea id="dog-bio" placeholder="Loves fetch, hates cats, great with kids…"></textarea>
+      </div>
+      <button type="submit" class="btn btn-primary" style="width:100%">🐾 Save Dog Profile</button>
+    </form>
+  </div>
+</div>
+
+<!-- ═══ MODAL: MEETUP ═════════════════════════════════ -->
+<div class="modal-overlay" id="meetup-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <h2>📅 Create a Meetup</h2>
+      <button class="modal-close" onclick="closeModal('meetup-modal')">×</button>
+    </div>
+    <form id="meetup-form" onsubmit="saveMeetup(event)">
+      <div class="form-group">
+        <label>Meetup Title *</label>
+        <input type="text" id="m-title" placeholder="e.g. Saturday Morning Fetch" required/>
+      </div>
+      <div class="form-group">
+        <label>📍 Pick Location on Map <span style="color:var(--muted);font-weight:400">(click to drop pin)</span></label>
+        <div id="modal-map"></div>
+        <div class="pick-location-hint">Click anywhere on the map to set the meetup location.</div>
+        <input type="text" id="m-location-name" placeholder="Location name / dog park" required/>
+        <input type="hidden" id="m-lat" value=""/>
+        <input type="hidden" id="m-lon" value=""/>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Date *</label>
+          <input type="date" id="m-date" required/>
+        </div>
+        <div class="form-group">
+          <label>Time *</label>
+          <input type="time" id="m-time" required/>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Type</label>
+        <div class="checkbox-group">
+          <div class="checkbox-pill"><input type="radio" name="m-type" id="mt1" value="oneoff" checked/><label for="mt1">📌 One-Off</label></div>
+          <div class="checkbox-pill"><input type="radio" name="m-type" id="mt2" value="recurring"/><label for="mt2">🔁 Recurring</label></div>
+        </div>
+      </div>
+      <div id="recur-options" style="display:none" class="form-group">
+        <label>Repeats Every</label>
+        <select id="m-recur">
+          <option value="weekly">Week</option>
+          <option value="biweekly">2 Weeks</option>
+          <option value="monthly">Month</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Max Dogs</label>
+        <input type="number" id="m-max" value="10" min="2" max="50"/>
+      </div>
+      <div class="form-group">
+        <label>Description</label>
+        <textarea id="m-desc" placeholder="Off-leash, bring water bowls, friendly dogs only…"></textarea>
+      </div>
+      <button type="submit" class="btn btn-green" style="width:100%">📅 Create Meetup</button>
+    </form>
+  </div>
+</div>
+
+<!-- ═══ MODAL: PROFILE ════════════════════════════════ -->
+<div class="modal-overlay" id="profile-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <h2>✏️ Edit Profile</h2>
+      <button class="modal-close" onclick="closeModal('profile-modal')">×</button>
+    </div>
+    <form id="profile-form" onsubmit="saveProfile(event)">
+      <div class="form-group">
+        <label>Your Name *</label>
+        <input type="text" id="pf-name" placeholder="e.g. Jamie" required/>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>City / Neighborhood</label>
+          <input type="text" id="pf-city" placeholder="e.g. Midtown Atlanta"/>
+        </div>
+        <div class="form-group">
+          <label>ZIP Code</label>
+          <input type="text" id="pf-zip" placeholder="e.g. 30308"/>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Favorite Dog Park</label>
+        <input type="text" id="pf-park" placeholder="e.g. Piedmont Park Dog Area"/>
+      </div>
+      <div class="form-group">
+        <label>Bio</label>
+        <textarea id="pf-bio" placeholder="Dog parent since 2020, love morning walks…"></textarea>
+      </div>
+      <button type="submit" class="btn btn-primary" style="width:100%">💾 Save Profile</button>
+    </form>
+  </div>
+</div>
+
+<!-- Leaflet JS -->
+<script src="[unpkg.com](https://unpkg.com/leaflet@1.9.4/dist/leaflet.js)"></script>
+<script src="[unpkg.com](https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js)"></script>
+
+<script>
+/* ══════════════════════════════════════════════════════
+   STATE
+══════════════════════════════════════════════════════ */
+let state = {
+  profile: JSON.parse(localStorage.getItem('pp_profile') || 'null') || {},
+  dogs:    JSON.parse(localStorage.getItem('pp_dogs')    || '[]'),
+  meetups: JSON.parse(localStorage.getItem('pp_meetups') || '[]'),
+};
+
+// Seed demo data if empty
+if (!state.dogs.length) {
+  state.dogs = [
+    { id: uid(), name: 'Biscuit',  breed: 'Golden Retriever', age: '3 years',  sex: 'Male (neutered)',  size: 'Large (60–100 lbs)',  personality: ['Playful','Friendly','Energetic'], bio: 'Loves fetch and swimming!', owner: 'Demo' },
+    { id: uid(), name: 'Luna',     breed: 'French Bulldog',   age: '2 years',  sex: 'Female (spayed)', size: 'Small (10–25 lbs)',   personality: ['Calm','Cuddly','Gentle'],         bio: 'Prefers snuggles over sprints.', owner: 'Demo' },
+    { id: uid(), name: 'Rocket',   breed: 'Border Collie',    age: '1.5 years',sex: 'Male (intact)',    size: 'Medium (25–60 lbs)', personality: ['Energetic','Playful','Protective'],bio: 'Fastest dog at the park.',    owner: 'Demo' },
+  ];
+  save();
+}
+if (!state.meetups.length) {
+  state.meetups = [
+    { id: uid(), title: 'Morning Fetch at Piedmont', location: 'Piedmont Park Dog Area', lat: 33.7850, lon: -84.3733, date: '2026-07-06', time: '08:00', type: 'recurring', recur: 'weekly',   max: 12, desc: 'Off-leash fun! Bring water.', owner: 'Demo', attendees: ['🐶','🐩'] },
+    { id: uid(), title: 'Pup Playdate – Candler Park', location: 'Candler Park',          lat: 33.7598, lon: -84.3481, date: '2026-07-05', time: '17:30', type: 'oneoff',    recur: '',         max: 8,  desc: 'Chill evening hangout.', owner: 'Demo', attendees: ['🐾'] },
+    { id: uid(), title: 'Weekend Big Dogs Only',      location: 'Ben Hill Dog Park',      lat: 33.7050, lon: -84.4770, date: '2026-07-12', time: '10:00', type: 'recurring', recur: 'biweekly', max: 20, desc: 'Large breeds welcome!',  owner: 'Demo', attendees: ['🦮','🐕'] },
+  ];
+  save();
+}
+
+function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2,6); }
+function save() {
+  localStorage.setItem('pp_dogs',    JSON.stringify(state.dogs));
+  localStorage.setItem('pp_meetups', JSON.stringify(state.meetups));
+  localStorage.setItem('pp_profile', JSON.stringify(state.profile));
+}
+
+/* ══════════════════════════════════════════════════════
+   NAVIGATION
+══════════════════════════════════════════════════════ */
+let mainMap = null, modalMap = null, modalMarker = null;
+let allMarkers = [];
+
+function showPage(id) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  // highlight nav
+  const btns = document.querySelectorAll('.nav-btn');
+  btns.forEach(b => { if (b.getAttribute('onclick')?.includes(id)) b.classList.add('active'); });
+
+  if (id === 'home')     renderHome();
+  if (id === 'map-page') { renderMeetupList(); initMainMap(); }
+  if (id === 'meetups')  renderMeetupList();
+  if (id === 'dogs')     renderDogList();
+  if (id === 'profile')  renderProfile();
+}
+
+/* ══════════════════════════════════════════════════════
+   MAP
+══════════════════════════════════════════════════════ */
+const ATL = [33.749, -84.388];
+
+const DOG_PARKS = [
+  { name: 'Piedmont Park Dog Area',      lat: 33.7850, lon: -84.3733 },
+  { name: 'Candler Park Dog Run',         lat: 33.7598, lon: -84.3481 },
+  { name: 'Ben Hill Recreation Dog Park', lat: 33.7050, lon: -84.4770 },
+  { name: 'Burgess-Peterson Dog Park',    lat: 33.7440, lon: -84.3340 },
+  { name: 'Browns Mill Dog Park',         lat: 33.6880, lon: -84.3620 },
+];
+
+function initMainMap() {
+  if (mainMap) { mainMap.invalidateSize(); plotMeetups('all'); return; }
+  mainMap = L.map('map').setView(ATL, 12);
+  L.tileLayer('[{s}.tile.openstreetmap.org](https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png)', {
+    attribution: '© OpenStreetMap contributors'
+  }).addTo(mainMap);
+  // Dog parks
+  DOG_PARKS.forEach(p => {
+    L.circleMarker([p.lat, p.lon], { radius:10, color:'#5B8DEF', fillColor:'#5B8DEF', fillOpacity:.5, weight:2 })
+      .addTo(mainMap)
+      .bindPopup(`<b>🏞️ ${p.name}</b><br/><small>Dog Park</small>`);
+  });
+  plotMeetups('all');
+}
+
+function plotMeetups(filter) {
+  if (!mainMap) return;
+  allMarkers.forEach(m => mainMap.removeLayer(m));
+  allMarkers = [];
+  state.meetups.forEach(m => {
+    if (filter !== 'all' && m.type !== filter) return;
+    if (!m.lat || !m.lon) return;
+    const color = m.type === 'recurring' ? '#4CAF8C' : '#F4845F';
+    const circle = L.circleMarker([m.lat, m.lon], {
+      radius: 14, color, fillColor: color, fillOpacity: .8, weight: 2
+    }).addTo(mainMap);
+    circle.bindPopup(`
+      <div style="font-family:sans-serif;min-width:180px">
+        <b style="font-size:14px">${m.title}</b><br/>
+        <span style="color:#888">📍 ${m.location}</span><br/>
+        <span style="color:#888">📅 ${m.date} at ${m.time}</span><br/>
+        <span style="background:${color};color:#fff;padding:2px 8px;border-radius:10px;font-size:.78rem">${m.type==='recurring'?'🔁 Recurring':'📌 One-Off'}</span><br/>
+        <small>${m.desc||''}</small><br/>
+        <small>👥 Max ${m.max} dogs · ${m.attendees?.length||0} going</small>
+        <br/><button onclick="joinMeetup('${m.id}')" style="margin-top:8px;padding:5px 12px;background:#F4845F;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:.82rem">🐾 Join</button>
+      </div>
+    `);
+    allMarkers.push(circle);
+  });
+}
+
+function filterMap(f) {
+  document.querySelectorAll('#filter-all,#filter-oneoff,#filter-recurring').forEach(b => b.classList.remove('active'));
+  document.getElementById('filter-'+f).classList.add('active');
+  plotMeetups(f);
+}
+
+function locateUser() {
+  if (!navigator.geolocation) { toast('Geolocation not supported'); return; }
+  navigator.geolocation.getCurrentPosition(pos => {
+    if (!mainMap) initMainMap();
+    mainMap.setView([pos.coords.latitude, pos.coords.longitude], 14);
+    L.marker([pos.coords.latitude, pos.coords.longitude])
+      .addTo(mainMap)
+      .bindPopup('📍 You are here')
+      .openPopup();
+  }, () => toast('Could not get location'));
+}
+
+/* ══════════════════════════════════════════════════════
+   MODAL MAP (meetup creation)
+══════════════════════════════════════════════════════ */
+function initModalMap() {
+  if (modalMap) return;
+  setTimeout(() => {
+    modalMap = L.map('modal-map').setView(ATL, 12);
+    L.tileLayer('[{s}.tile.openstreetmap.org](https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png)').addTo(modalMap);
+    modalMap.on('click', e => {
+      if (modalMarker) modalMap.removeLayer(modalMarker);
+      modalMarker = L.marker([e.latlng.lat, e.latlng.lng]).addTo(modalMap);
+      document.getElementById('m-lat').value = e.latlng.lat.toFixed(6);
+      document.getElementById('m-lon').value = e.latlng.lng.toFixed(6);
+    });
+    DOG_PARKS.forEach(p => {
+      L.circleMarker([p.lat, p.lon], { radius:8, color:'#5B8DEF', fillColor:'#5B8DEF', fillOpacity:.5 })
+        .addTo(modalMap)
+        .bindPopup(`<b>${p.name}</b>`)
+        .on('click', e => {
+          document.getElementById('m-location-name').value = p.name;
+          document.getElementById('m-lat').value = p.lat;
+          document.getElementById('m-lon').value = p.lon;
+          L.DomEvent.stopPropagation(e);
+        });
+    });
+  }, 100);
+}
+
+/* ══════════════════════════════════════════════════════
+   MODALS
+══════════════════════════════════════════════════════ */
+function openDogModal() { document.getElementById('dog-modal').classList.add('open'); }
+function openMeetupModal() {
+  // Set today's date as default
+  const today = new Date().toISOString().split('T')[0];
+  document.getElementById('m-date').value = today;
+  document.getElementById('meetup-modal').classList.add('open');
+  initModalMap();
+  // Show/hide recur
+  document.querySelectorAll('input[name="m-type"]').forEach(r => {
+    r.addEventListener('change', () => {
+      document.getElementById('recur-options').style.display = r.value === 'recurring' ? 'block' : 'none';
+    });
+  });
+}
+function openProfileModal() {
+  const p = state.profile;
+  document.getElementById('pf-name').value = p.name  || '';
+  document.getElementById('pf-city').value = p.city  || '';
+  document.getElementById('pf-zip').value  = p.zip   || '';
+  document.getElementById('pf-park').value = p.park  || '';
+  document.getElementById('pf-bio').value  = p.bio   || '';
+  document.getElementById('profile-modal').classList.add('open');
+}
+function closeModal(id) {
+  document.getElementById(id).classList.remove('open');
+}
+// Close on overlay click
+document.querySelectorAll('.modal-overlay').forEach(o => {
+  o.addEventListener('click', e => { if (e.target === o) o.classList.remove('open'); });
+});
+
+/* ══════════════════════════════════════════════════════
+   SAVE HANDLERS
+══════════════════════════════════════════════════════ */
+function saveDog(e) {
+  e.preventDefault();
+  const traits = [...document.querySelectorAll('#personality-checks input:checked')].map(i => i.value);
+  const dog = {
+    id:          uid(),
+    name:        document.getElementById('dog-name').value,
+    breed:       document.getElementById('dog-breed').value,
+    age:         document.getElementById('dog-age').value,
+    sex:         document.getElementById('dog-sex').value,
+    size:        document.getElementById('dog-size').value,
+    personality: traits,
+    bio:         document.getElementById('dog-bio').value,
+    owner:       state.profile.name || 'Me',
+  };
+  state.dogs.push(dog);
+  save();
+  closeModal('dog-modal');
+  document.getElementById('dog-form').reset();
+  toast(`🐾 ${dog.name} added!`);
+  renderDogList();
+  renderHome();
+  renderProfile();
+}
+
+function saveMeetup(e) {
+  e.preventDefault();
+  const lat = parseFloat(document.getElementById('m-lat').value);
+  const lon = parseFloat(document.getElementById('m-lon').value);
+  if (!lat || !lon) { toast('📍 Please click the map to set a location'); return; }
+  const meetup = {
+    id:        uid(),
+    title:     document.getElementById('m-title').value,
+    location:  document.getElementById('m-location-name').value,
+    lat, lon,
+    date:      document.getElementById('m-date').value,
+    time:      document.getElementById('m-time').value,
+    type:      document.querySelector('input[name="m-type"]:checked').value,
+    recur:     document.getElementById('m-recur').value,
+    max:       document.getElementById('m-max').value,
+    desc:      document.getElementById('m-desc').value,
+    owner:     state.profile.name || 'Me',
+    attendees: [],
+  };
+  state.meetups.push(meetup);
+  save();
+  closeModal('meetup-modal');
+  document.getElementById('meetup-form').reset();
+  document.getElementById('m-lat').value = '';
+  document.getElementById('m-lon').value = '';
+  if (modalMarker) { modalMap.removeLayer(modalMarker); modalMarker = null; }
+  toast(`📅 Meetup "${meetup.title}" created!`);
+  renderMeetupList();
+  renderHome();
+  if (mainMap) plotMeetups('all');
+}
+
+function saveProfile(e) {
+  e.preventDefault();
+  state.profile = {
+    name: document.getElementById('pf-name').value,
+    city: document.getElementById('pf-city').value,
+    zip:  document.getElementById('pf-zip').value,
+    park: document.getElementById('pf-park').value,
+    bio:  document.getElementById('pf-bio').value,
+  };
+  save();
+  closeModal('profile-modal');
+  renderProfile();
+  toast('✅ Profile saved!');
+}
+
+function joinMeetup(id) {
+  const m = state.meetups.find(x => x.id === id);
+  if (!m) return;
+  m.attendees = m.attendees || [];
+  m.attendees.push('🐾');
+  save();
+  toast(`🐾 Joined "${m.title}"!`);
+  renderMeetupList();
+  if (mainMap) plotMeetups('all');
+}
+
+/* ══════════════════════════════════════════════════════
+   RENDER
+══════════════════════════════════════════════════════ */
+function dogEmoji(breed='') {
+  const b = breed.toLowerCase();
+  if (b.includes('golden') || b.includes('labrador')) return '🦮';
+  if (b.includes('poodle') || b.includes('doodle'))  return '🐩';
+  if (b.includes('bulldog') || b.includes('frenchie')) return '🐶';
+  if (b.includes('husky') || b.includes('malamute')) return '🐺';
+  return '🐕';
+}
+
+function renderDogCard(d) {
+  return `
+  <div class="dog-card">
+    <div class="dog-card-avatar">${dogEmoji(d.breed)}</div>
+    <h3>${d.name}</h3>
+    <div class="breed">${d.breed} · ${d.age||'Age unknown'}</div>
+    <div style="font-size:.85rem;color:var(--muted)">${d.sex||''} ${d.size?'· '+d.size:''}</div>
+    <div class="tags">
+      ${(d.personality||[]).map(p=>`<span class="tag brand">${p}</span>`).join('')}
+    </div>
+    ${d.bio?`<p style="font-size:.82rem;color:#666;margin-top:10px">${d.bio}</p>`:''}
+    <div style="font-size:.78rem;color:var(--muted);margin-top:8px">👤 ${d.owner||'Unknown'}</div>
+  </div>`;
+}
+
+function renderMeetupCard(m) {
+  const cls = m.type === 'recurring' ? 'meetup-card recurring' : 'meetup-card';
+  const badge = m.type === 'recurring'
+    ? `<span class="tag green">🔁 ${m.recur||'Recurring'}</span>`
+    : `<span class="tag brand">📌 One-Off</span>`;
+  const avatars = (m.attendees||[]).map(a=>`<div class="attendee-avatar">${a}</div>`).join('');
+  return `
+  <div class="${cls}">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start">
+      <h3 style="font-size:1rem">${m.title}</h3>
+      ${badge}
+    </div>
+    <div class="meetup-meta">
+      <span>📍 ${m.location}</span>
+      <span>📅 ${m.date}</span>
+      <span>⏰ ${m.time}</span>
+      <span>🐶 Max ${m.max}</span>
+    </div>
+    ${m.desc?`<p style="font-size:.83rem;color:#666;margin:6px 0">${m.desc}</p>`:''}
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-top:10px">
+      <div class="attendees">${avatars}<span style="font-size:.8rem;color:var(--muted);margin-left:8px">${(m.attendees||[]).length} going</span></div>
+      <button class="btn btn-primary btn-sm" onclick="joinMeetup('${m.id}')">🐾 Join</button>
+    </div>
+  </div>`;
+}
+
+function renderHome() {
+  // Stats
+  document.getElementById('stats-row').innerHTML = `
+    <div class="stat-card"><div class="stat-val">${state.dogs.length}</div><div class="stat-lbl">🐶 Dogs Registered</div></div>
+    <div class="stat-card"><div class="stat-val">${state.meetups.length}</div><div class="stat-lbl">📅 Meetups Planned</div></div>
+    <div class="stat-card"><div class="stat-val">${state.meetups.filter(m=>m.type==='recurring').length}</div><div class="stat-lbl">🔁 Recurring Events</div></div>
+    <div class="stat-card"><div class="stat-val">${DOG_PARKS.length}</div><div class="stat-lbl">🏞️ Dog Parks</div></div>
+  `;
+  // Home meetups
+  const upcoming = [...state.meetups].sort((a,b)=>a.date.localeCompare(b.date)).slice(0,3);
+  document.getElementById('home-meetups').innerHTML = upcoming.length
+    ? upcoming.map(renderMeetupCard).join('')
+    : `<div class="empty-state"><span class="emoji">📅</span>No meetups yet.<br/><button class="btn btn-primary btn-sm" onclick="openMeetupModal()" style="margin-top:12px">Create one</button></div>`;
+  // Home dogs
+  document.getElementById('home-dogs').innerHTML = state.dogs.slice(0,3).map(renderDogCard).join('') ||
+    `<div class="empty-state"><span class="emoji">🐶</span>No dogs yet.<br/><button class="btn btn-primary btn-sm" onclick="openDogModal()" style="margin-top:12px">Add yours</button></div>`;
+}
+
+function renderDogList() {
+  document.getElementById('dog-list').innerHTML = state.dogs.map(renderDogCard).join('') ||
+    `<div class="empty-state" style="grid-column:1/-1"><span class="emoji">🐶</span>No dogs registered yet.</div>`;
+}
+
+let meetupFilter = 'all';
+function filterMeetupList(f, btn) {
+  meetupFilter = f;
+  document.querySelectorAll('#meetups .tab').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  renderMeetupList();
+}
+
+function renderMeetupList() {
+  const list = state.meetups.filter(m => meetupFilter === 'all' || m.type === meetupFilter);
+  const sorted = [...list].sort((a,b) => a.date.localeCompare(b.date));
+  document.getElementById('meetup-list').innerHTML = sorted.map(renderMeetupCard).join('') ||
+    `<div class="empty-state" style="grid-column:1/-1"><span class="emoji">📅</span>No meetups found.</div>`;
+}
+
+function renderProfile() {
+  const p = state.profile;
+  document.getElementById('profile-name').textContent     = p.name     || 'Your Profile';
+  document.getElementById('profile-location').textContent = p.city ? `📍 ${p.city}${p.zip ? ' '+p.zip : ''}` : '📍 Location not set';
+  document.getElementById('profile-park').textContent     = p.park ? `🏞️ Fave park: ${p.park}` : '';
+  document.getElementById('my-dogs').innerHTML = state.dogs.filter(d=>d.owner===(p.name||'Me')||d.owner==='Demo').map(renderDogCard).join('') ||
+    `<div class="empty-state" style="grid-column:1/-1"><span class="emoji">🐶</span>No dogs added yet.</div>`;
+  document.getElementById('my-meetups').innerHTML = state.meetups.filter(m=>m.owner===(p.name||'Me')||m.owner==='Demo').map(renderMeetupCard).join('') ||
+    `<div class="empty-state" style="grid-column:1/-1"><span class="emoji">📅</span>No meetups created yet.</div>`;
+}
+
+/* ══════════════════════════════════════════════════════
+   TOAST
+══════════════════════════════════════════════════════ */
+let toastTimer;
+function toast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove('show'), 3000);
+}
+
+/* ══════════════════════════════════════════════════════
+   INIT
+══════════════════════════════════════════════════════ */
+renderHome();
+</script>
+</body>
+</html>
